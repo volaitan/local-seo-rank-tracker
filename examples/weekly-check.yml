@@ -1,0 +1,32 @@
+# Copy to .github/workflows/ in a private repo to run a check every Monday and email the report.
+# Add GOOGLE_MAPS_API_KEY, SMTP_HOST, SMTP_USER, SMTP_PASSWORD and CLIENT_EMAIL as repository secrets.
+name: weekly-rank-check
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install git+https://github.com/volaitan/local-seo-rank-tracker.git
+      - name: Check rankings and email the report
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          rank-tracker check
+          rank-tracker email --to "${{ secrets.CLIENT_EMAIL }}"
+      - name: Save history back to the repo
+        run: |
+          git config user.name "rank-tracker"
+          git config user.email "rank-tracker@users.noreply.github.com"
+          git add rankings.sqlite && git commit -m "Weekly rank check" && git push || echo "No changes"

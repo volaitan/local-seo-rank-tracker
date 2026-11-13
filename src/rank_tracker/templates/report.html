@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local rankings: {{ cfg.business_name }}</title>
+<style>
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:#f3f6f9; color:#1d2733; line-height:1.5; }
+  .wrap { width:min(980px, 94%); margin:2rem auto; }
+  header { background:#0f3d5e; color:#fff; border-radius:14px; padding:1.75rem 2rem; }
+  header h1 { margin:0 0 .25rem; font-size:1.5rem; } header p { margin:0; opacity:.85; }
+  h2 { font-size:1.15rem; margin:2rem 0 .75rem; }
+  .card { background:#fff; border-radius:12px; padding:1.25rem 1.5rem; box-shadow:0 3px 14px rgba(15,61,94,.07); margin-bottom:1rem; }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; }
+  th, td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid #e8edf3; }
+  th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:#5b6776; }
+  .num { text-align:right; white-space:nowrap; }
+  .up { color:#2e9e6a; font-weight:600; font-size:.85em; } .down { color:#d9534f; font-weight:600; font-size:.85em; }
+  .you td { background:#eef4ff; font-weight:600; }
+  .grids { display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:1rem; }
+  .grid-card h3 { margin:0 0 .5rem; font-size:.95rem; }
+  .grid { display:grid; gap:3px; }
+  .cell { aspect-ratio:1; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:.78rem; }
+  .legend { display:flex; gap:1rem; flex-wrap:wrap; font-size:.8rem; color:#5b6776; margin-top:.5rem; }
+  .legend span::before { content:""; display:inline-block; width:.7rem; height:.7rem; border-radius:50%; margin-right:.3rem; vertical-align:-1px; background:var(--c); }
+  img { width:100%; height:auto; }
+  ul.tips li { margin:.4rem 0; }
+  footer { color:#5b6776; font-size:.8rem; margin:2rem 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Local search rankings: {{ cfg.business_name }}</h1>
+    <p>Checked {{ latest }}{% if previous %} · compared with {{ previous }}{% endif %} · {{ cfg.size }}×{{ cfg.size }} grid across {{ cfg.radius_km|round(1) }} km · {{ checks }} check{{ 's' if checks != 1 }} on record</p>
+  </header>
+
+  <h2>Summary</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Keyword</th><th class="num">Visibility</th><th class="num">In top 3</th><th class="num">Avg. position</th><th class="num">Found</th></tr></thead>
+      <tbody>
+      {% for k in keywords %}{% set s = k.summary %}
+        <tr>
+          <td>{{ k.keyword }}</td>
+          <td class="num">{{ s.visibility }} <span class="{{ 'up' if '▲' in k.vis_change else ('down' if '▼' in k.vis_change else '') }}">{{ k.vis_change }}</span></td>
+          <td class="num">{{ s.top3_share }}% <span class="{{ 'up' if '▲' in k.top3_change else ('down' if '▼' in k.top3_change else '') }}">{{ k.top3_change }}</span></td>
+          <td class="num">{{ s.average_position if s.average_position is not none else '—' }} <span class="{{ 'up' if '▲' in k.arp_change else ('down' if '▼' in k.arp_change else '') }}">{{ k.arp_change }}</span></td>
+          <td class="num">{{ s.found_share }}%</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Where you rank across your area</h2>
+  <div class="grids">
+    {% for k in keywords %}
+    <div class="card grid-card">
+      <h3>“{{ k.keyword }}”</h3>
+      <div class="grid" style="grid-template-columns: repeat({{ k.grid|length }}, 1fr)">
+        {% for row in k.grid %}{% for pos, colour in row %}
+          <div class="cell" style="background: {{ colour }}" title="Position {{ pos or 'not found' }}">{{ pos if pos is not none else '×' }}</div>
+        {% endfor %}{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="legend">
+    <span style="--c:#2e9e6a">Top 3 (map pack)</span><span style="--c:#e8a90c">4–10</span><span style="--c:#e06d3c">11–20</span><span style="--c:#d9534f">Not found</span>
+    <span>North is at the top; the centre dot is your base.</span>
+  </div>
+
+  <h2>Visibility over time</h2>
+  <div class="card"><img src="{{ trend_chart }}" alt="Visibility trend chart"></div>
+
+  <h2>Competitors</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Business</th><th class="num">Avg. visibility</th><th class="num">Rating</th><th class="num">Reviews</th></tr></thead>
+      <tbody>
+      {% for c in competitors %}
+        <tr class="{{ 'you' if c.you }}"><td>{{ c.name }}{% if c.you %} (you){% endif %}</td><td class="num">{{ c.visibility }}</td>
+          <td class="num">{{ c.rating if c.rating is not none else '—' }}★</td><td class="num">{{ c.reviews }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <img src="{{ reviews_chart }}" alt="Review growth chart" style="margin-top:1rem">
+  </div>
+
+  <h2>What to do next</h2>
+  <div class="card"><ul class="tips">{% for t in actions %}<li>{{ t }}</li>{% endfor %}</ul></div>
+
+  <footer>Generated {{ generated }} by local-seo-rank-tracker.
+    Visibility: #1 scores 100, each place lower loses 10 points, #11 or lower scores 0; averaged over the grid.</footer>
+</div>
+</body>
+</html>
